@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
-import * as vm from 'node:vm'; // 💥 NEW: The Virtual Machine module
 
+// 1. Define our Types (Strict typing is crucial for complex systems)
 interface TitanNode {
   id: string;
   type: string;
@@ -12,83 +12,40 @@ interface TitanWorkflow {
   nodes: TitanNode[];
 }
 
-function resolveParameters(params: Record<string, any>, context: Record<string, any>) {
-  const resolved: Record<string, any> = {};
-  for (const [key, value] of Object.entries(params)) {
-    if (typeof value === 'string') {
-      resolved[key] = value.replace(/\{\{([^}]+)\}\}/g, (_, path) => {
-        const keys = path.split('.');
-        let currentData = context;
-        for (const k of keys) {
-          if (currentData[k] === undefined) return 'UNDEFINED';
-          currentData = currentData[k];
-        }
-        return String(currentData);
-      });
-    } else {
-      resolved[key] = value;
-    }
-  }
-  return resolved;
-}
-
+// 2. The Core Execution Engine
 async function executeWorkflow(filePath: string) {
+  // Read and parse the JSON file
   const rawData = fs.readFileSync(filePath, 'utf-8');
   const workflow: TitanWorkflow = JSON.parse(rawData);
 
   console.log(`🚀 Starting Workflow: ${workflow.name}\n`);
-  const executionContext: Record<string, any> = {};
 
+  // 3. The "Runner" Loop
+  // For Phase 1, we are just executing them in array order. 
+  // Later, we will upgrade this to a DAG solver!
   for (const node of workflow.nodes) {
     console.log(`⏳ [Running] ${node.id} (Type: ${node.type})`);
-    const resolvedParams = resolveParameters(node.parameters, executionContext);
-    let nodeOutput: Record<string, any> = {};
-
+    
+    // The "Action" router
     switch (node.type) {
       case 'Start':
-        console.log(`   -> ${resolvedParams.message}`);
-        nodeOutput = { timestamp: new Date().toISOString() };
+        console.log(`   -> ${node.parameters.message}`);
         break;
       
-      // 💥 NEW: The Code Sandbox Node
-      case 'Code':
-        console.log(`   -> 🛠️  Executing custom JavaScript sandbox...`);
-        try {
-          // 1. Define the safe environment (only allow access to 'context' and 'output')
-          const sandboxEnvironment = { 
-            context: executionContext, 
-            output: {} as Record<string, any> 
-          };
-          
-          // 2. Create the VM context
-          vm.createContext(sandboxEnvironment);
-          
-          // 3. Run the user's code inside the bubble safely
-          const script = new vm.Script(resolvedParams.code);
-          script.runInContext(sandboxEnvironment);
-          
-          // 4. Capture whatever the user put into 'output'
-          nodeOutput = sandboxEnvironment.output;
-        } catch (error: any) {
-          console.log(`   -> ❌ Sandbox Error: ${error.message}`);
-          nodeOutput = { error: error.message };
-        }
-        break;
-
       case 'Log':
-        console.log(`   -> 📝 SYSTEM LOG: ${resolvedParams.message}`);
-        nodeOutput = { success: true };
+        console.log(`   -> 📝 SYSTEM LOG: ${node.parameters.message}`);
         break;
       
       default:
         console.log(`   -> ⚠️ Unknown node type: ${node.type}`);
     }
     
-    executionContext[node.id] = nodeOutput;
+    // Simulate a tiny bit of processing time so it feels real
     await new Promise(resolve => setTimeout(resolve, 800));
   }
 
   console.log(`\n✅ Workflow [${workflow.name}] completed successfully!`);
 }
 
+// 4. Trigger the engine
 executeWorkflow('./workflow.json').catch(console.error);
