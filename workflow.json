@@ -1,5 +1,5 @@
 {
-  "name": "Titan Genesis - Sandbox Edition",
+  "name": "Titan Genesis",
   "nodes": [
     {
       "id": "node-1",
@@ -10,16 +10,9 @@
     },
     {
       "id": "node-2",
-      "type": "Code",
-      "parameters": { 
-        "code": "const rawDate = new Date(context['node-1'].timestamp); output.formatted = 'The date is ' + rawDate.toDateString() + ' and it is awesome!';"
-      }
-    },
-    {
-      "id": "node-3",
       "type": "Log",
       "parameters": { 
-        "message": "Result from Code Node: {{node-2.formatted}}" 
+        "message": "Hello World! Phase 1 is a success." 
       }
     }
   ]
