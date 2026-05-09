@@ -1,0 +1,26 @@
+{
+  "name": "Titan Genesis - Sandbox Edition",
+  "nodes": [
+    {
+      "id": "node-1",
+      "type": "Start",
+      "parameters": { 
+        "message": "Booting up Flow-titan engine..." 
+      }
+    },
+    {
+      "id": "node-2",
+      "type": "Code",
+      "parameters": { 
+        "code": "const rawDate = new Date(context['node-1'].timestamp); output.formatted = 'The date is ' + rawDate.toDateString() + ' and it is awesome!';"
+      }
+    },
+    {
+      "id": "node-3",
+      "type": "Log",
+      "parameters": { 
+        "message": "Result from Code Node: {{node-2.formatted}}" 
+      }
+    }
+  ]
+}
