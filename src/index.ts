@@ -1,12 +1,6 @@
-import express from 'express';
-import cors from 'cors';
-import * as vm from 'node:vm';
+import * as fs from 'node:fs';
 
-const app = express();
-app.use(cors()); // Allow frontend to connect
-app.use(express.json()); // Allow server to read JSON
-
-// Our existing Types
+// 1. Define our Types (Strict typing is crucial for complex systems)
 interface TitanNode {
   id: string;
   type: string;
@@ -18,88 +12,40 @@ interface TitanWorkflow {
   nodes: TitanNode[];
 }
 
-// Our existing Template Resolver
-function resolveParameters(params: Record<string, any>, context: Record<string, any>) {
-  const resolved: Record<string, any> = {};
-  for (const [key, value] of Object.entries(params)) {
-    if (typeof value === 'string') {
-      resolved[key] = value.replace(/\{\{([^}]+)\}\}/g, (_, path) => {
-        const keys = path.split('.');
-        let currentData = context;
-        for (const k of keys) {
-          if (currentData[k] === undefined) return 'UNDEFINED';
-          currentData = currentData[k];
-        }
-        return String(currentData);
-      });
-    } else {
-      resolved[key] = value;
-    }
-  }
-  return resolved;
-}
+// 2. The Core Execution Engine
+async function executeWorkflow(filePath: string) {
+  // Read and parse the JSON file
+  const rawData = fs.readFileSync(filePath, 'utf-8');
+  const workflow: TitanWorkflow = JSON.parse(rawData);
 
-// 💥 MODIFIED: Now it accepts a JSON object directly instead of a file path!
-async function executeWorkflow(workflow: TitanWorkflow) {
-  console.log(`\n🚀 API RECEIVED WORKFLOW: ${workflow.name}`);
-  const executionContext: Record<string, any> = {};
-  const logs: string[] = []; // Keep track of logs to send back to UI
+  console.log(`🚀 Starting Workflow: ${workflow.name}\n`);
 
+  // 3. The "Runner" Loop
+  // For Phase 1, we are just executing them in array order. 
+  // Later, we will upgrade this to a DAG solver!
   for (const node of workflow.nodes) {
-    const logMsg = `⏳ [Running] ${node.id} (Type: ${node.type})`;
-    console.log(logMsg);
-    logs.push(logMsg);
+    console.log(`⏳ [Running] ${node.id} (Type: ${node.type})`);
     
-    const resolvedParams = resolveParameters(node.parameters, executionContext);
-    let nodeOutput: Record<string, any> = {};
-
+    // The "Action" router
     switch (node.type) {
       case 'Start':
-        nodeOutput = { timestamp: new Date().toISOString() };
+        console.log(`   -> ${node.parameters.message}`);
         break;
       
-      case 'Code':
-        try {
-          const sandboxEnvironment = { context: executionContext, output: {} as Record<string, any> };
-          vm.createContext(sandboxEnvironment);
-          const script = new vm.Script(resolvedParams.code);
-          script.runInContext(sandboxEnvironment);
-          nodeOutput = sandboxEnvironment.output;
-        } catch (error: any) {
-          nodeOutput = { error: error.message };
-        }
-        break;
-
       case 'Log':
-        const finalLog = `📝 SYSTEM LOG: ${resolvedParams.message}`;
-        console.log(`   -> ${finalLog}`);
-        logs.push(finalLog);
-        nodeOutput = { success: true };
+        console.log(`   -> 📝 SYSTEM LOG: ${node.parameters.message}`);
         break;
+      
+      default:
+        console.log(`   -> ⚠️ Unknown node type: ${node.type}`);
     }
     
-    executionContext[node.id] = nodeOutput;
-    await new Promise(resolve => setTimeout(resolve, 500)); // slightly faster
+    // Simulate a tiny bit of processing time so it feels real
+    await new Promise(resolve => setTimeout(resolve, 800));
   }
 
-  console.log(`✅ Workflow completed!\n`);
-  return { success: true, logs, finalContext: executionContext };
+  console.log(`\n✅ Workflow [${workflow.name}] completed successfully!`);
 }
 
-// 💥 NEW: The API Endpoint
-app.post('/api/execute', async (req, res) => {
-  try {
-    const workflow: TitanWorkflow = req.body;
-    const result = await executeWorkflow(workflow);
-    res.json(result); // Send results back to frontend
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Start the server
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`\n🌊 Flow-titan Engine API is running on http://localhost:${PORT}`);
-  console.log(`Waiting for workflows from the UI...`);
-});
+// 4. Trigger the engine
+executeWorkflow('./workflow.json').catch(console.error);
