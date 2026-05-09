@@ -1,0 +1,19 @@
+{
+  "name": "Titan Genesis",
+  "nodes": [
+    {
+      "id": "node-1",
+      "type": "Start",
+      "parameters": { 
+        "message": "Booting up Flow-titan engine..." 
+      }
+    },
+    {
+      "id": "node-2",
+      "type": "Log",
+      "parameters": { 
+        "message": "Hello World! Phase 1 is a success." 
+      }
+    }
+  ]
+}
